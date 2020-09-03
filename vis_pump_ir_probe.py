@@ -29,12 +29,14 @@ def load_data_set(path):
     delay_path = os.path.join(path, "scans")
     t = os.listdir(delay_path)
     t.sort()
-    n_delays = int(t[-1][-3:])
+    n_delays = int(t[-1][-3:]) + 1
+    print("Detected {} delays".format(n_delays))
     # Get scan count
     scan_path = os.path.join(delay_path, "delay000")
     t = os.listdir(scan_path) 
     t.sort()
-    n_scans = int(t[-1][1:7]) # Not safe 
+    n_scans = int(t[-1][1:7]) + 1 # Not safe 
+    print("Detected {} scans".format(n_scans))
 
     # Get the size of one data array
     for file in t[:4]: # There should be 4 different files for each scan
@@ -146,6 +148,7 @@ def average_signal_without_weights(data: ndarray, s2s_std: ndarray):
 
 
 if __name__ == "__main__":
-    d, w, c, s = load_data_set("/Users/arthun/Downloads/20200822__009")
+    d, w, c, s = load_data_set(r"C:\Users\H-Lab\Desktop\DiPeptide python\20200902_2020-09-02_DiPe_1000shots_6muJ_Python_000")
 
     t1 = average_transmission_with_counts(d, c)
+    
