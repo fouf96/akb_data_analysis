@@ -1,5 +1,9 @@
 import os
+
 import numpy as np
+from numpy import ndarray
+
+from matplotlib import pyplot as plt
 
 def load_data_set(path):
     # Check whether combined data set
@@ -93,7 +97,55 @@ def load_data_set(path):
     return data, weights, counts, s2s_std
 
 def average_transmission_with_counts(data: ndarray, counts: ndarray):
-    pass
+    # Average data
+    avg_data = np.average(data, axis=0, weights=counts)
+    # Calculate absorption
+    absorption = -np.log10(avg_data)
+    # Calculate difference signal
+    signal = np.take(absorption, 1, axis=-1) - np.take(absorption, 0, axis=-1)
+
+    return signal
+
+def average_transmission_with_weights(data: ndarray, weights: ndarray):
+    # Average data
+    avg_data = np.average(data, axis=0, weights=weights)
+    # Calculate absorption
+    absorption = -np.log10(avg_data)
+    # Calculate difference signal
+    signal = np.take(absorption, 1, axis=-1) - np.take(absorption, 0, axis=-1)
+
+    return signal
+     
+def average_signal_with_s2s(data: ndarray, s2s_std: ndarray):
+    # Calculate signal for each scan
+    # Calculate absorption
+    absorption = -np.log10(data)
+    # Calculate difference signal
+    signal = np.take(absorption, 1, axis=-1) - np.take(absorption, 0, axis=-1)
+
+    # Average signals
+    # For this calculate inverse variance of 
+    # s2s difference signal for each scan
+    # to use as weights
+    weights = np.float_power(s2s_std, -2)
+    avg_signal = np.average(signal, axis=0, weights=weights)
+
+    return avg_signal
+
+def average_signal_without_weights(data: ndarray, s2s_std: ndarray):
+    # Calculate signal for each scan
+    # Calculate absorption
+    absorption = -np.log10(data)
+    # Calculate difference signal
+    signal = np.take(absorption, 1, axis=-1) - np.take(absorption, 0, axis=-1)
+
+    # Average signals
+    avg_signal = np.average(signal, axis=0)
+
+    return avg_signal
+
 
 if __name__ == "__main__":
     d, w, c, s = load_data_set("/Users/arthun/Downloads/20200822__009")
+
+    t1 = average_transmission_with_counts(d, c)
