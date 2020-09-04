@@ -134,7 +134,7 @@ def average_signal_with_s2s(data: ndarray, s2s_std: ndarray):
 
     return avg_signal
 
-def average_signal_without_weights(data: ndarray, s2s_std: ndarray):
+def average_signal_without_weights(data: ndarray):
     # Calculate signal for each scan
     # Calculate absorption
     absorption = -np.log10(data)
@@ -148,7 +148,35 @@ def average_signal_without_weights(data: ndarray, s2s_std: ndarray):
 
 
 if __name__ == "__main__":
-    d, w, c, s = load_data_set(r"C:\Users\H-Lab\Desktop\DiPeptide python\20200902_2020-09-02_DiPe_1000shots_6muJ_Python_000")
-
+    path = r"C:\Users\H-Lab\Desktop\DiPeptide python\20200901_20200901_DiPe_30cm_Lens_6muJpump_Python_000"
+    d, w, c, s = load_data_set(path)
     t1 = average_transmission_with_counts(d, c)
+    t2 = average_transmission_with_weights(d, w)
+    t3 = average_signal_with_s2s(d, s)
+    t4 = average_signal_without_weights(d)
+
+    np.savetxt(os.path.join(path, "average_transmission_with_counts"), t1)
+    np.savetxt(os.path.join(path, "average_transmission_with_weights"), t2)
+    np.savetxt(os.path.join(path, "average_signal_with_s2s"), t3)
+    np.savetxt(os.path.join(path, "average_signal_without_weights"), t4)
+
+    nrows = 8
+    ncols = 8
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols)
+    for freq in range(t1.shape[1]):
+        ax_idx = np.unravel_index(freq, (nrows, ncols))
+        axes[ax_idx].plot(t1[:, freq], label="average_transmission_with_counts", linewidth= 0.5)
+        axes[ax_idx].plot(t2[:, freq], label="average_transmission_with_weights", linewidth= 0.5)
+        axes[ax_idx].plot(t3[:, freq], label="average_signal_with_s2s", linewidth= 0.5)
+        axes[ax_idx].plot(t4[:, freq], label="average_signal_without_weights", linewidth= 0.5)
+
+        axes[ax_idx].legend(fontsize=5)
+    # fig, ax = plt.subplots()
+
+    # ax.plot(t1[:, 20], label="average_transmission_with_counts", linewidth= 0.5)
+    # ax.plot(t2[:, 20], label="average_transmission_with_weights", linewidth= 0.5)
+    # ax.plot(t3[:, 20], label="average_signal_with_s2s", linewidth= 0.5)
+    # ax.plot(t4[:, 20], label="average_signal_without_weights", linewidth= 0.5)
     
+    # ax.set_xscale("log")
+    plt.show()
