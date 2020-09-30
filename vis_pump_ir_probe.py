@@ -6,9 +6,17 @@ from numpy import ndarray
 from matplotlib import pyplot as plt
 
 def load_data_set(path):
+    # Get name of folder and
+    # ergo filename in this folder
+    filename = os.path.basename(path)
+    # Load delay
+    # and probe_wn_axis etc.
+    delays = np.load(os.path.join(path, "delay_file_" + filename +".npy")) 
+    probe_axis = np.load(os.path.join(path, "probe_wn_axis_" + filename +".npy"))
+
     # Check whether combined data set
     # was already created before hand
-    # in that case in can just be
+    # in that case it can just be
     # loaded
     if "combined_data" in os.listdir(path):
         print("Combined data already exists loading directly.")
@@ -20,19 +28,24 @@ def load_data_set(path):
         counts = np.load(os.path.join(f_path, "counts.npy"))
         s2s_std = np.load(os.path.join(f_path, "s2s_std.npy"))
         
-        return data, weights, counts, s2s_std
+        return data, weights, counts, s2s_std, delays, probe_axis
     
-    # Get name of folder and
-    # ergo filename in this folder
-    filename = os.path.basename(path)
     # Get delay count
-    delay_path = os.path.join(path, "scans")
-    t = os.listdir(delay_path)
-    t.sort()
-    n_delays = int(t[-1][-3:]) + 1
+    n_delays = delays.shape[0]
     print("Detected {} delays".format(n_delays))
+
     # Get scan count
-    scan_path = os.path.join(delay_path, "delay000")
+    # For this we go into into the folder
+    # where the scans are saved for the last delay
+    # and take the last entry of the sorted list
+    # Because we only want to detect complete
+    # scans
+    #! Change this to not throw away scan data later
+    scan_path = os.path.join(
+                            path,
+                            "scans",
+                            "delay{}".format(str(n_delays-1).zfill(3))
+                            )
     t = os.listdir(scan_path) 
     t.sort()
     n_scans = int(t[-1][1:7]) + 1 # Not safe 
@@ -74,7 +87,7 @@ def load_data_set(path):
             delay_str = "d{}_".format(delay_folder)
             scan_str = "s{}_".format(str(scan).zfill(6))
 
-            f_path = os.path.join(delay_path, "delay{}".format(delay_folder))
+            f_path = os.path.join(path, "scans", "delay{}".format(delay_folder))
             
             data_name = scan_str + delay_str + filename + ".npy"
             weights_name = scan_str + delay_str + "weights_" + filename + ".npy"
@@ -96,7 +109,36 @@ def load_data_set(path):
     np.save(os.path.join(new_dir, "counts"), counts)
     np.save(os.path.join(new_dir, "s2s_std"), s2s_std)
 
-    return data, weights, counts, s2s_std
+    return data, weights, counts, s2s_std, delays, probe_axis
+
+def load_average_data(path):
+    avg_path = os.path.join(path, "averaged_data")
+    
+    # Get delay count
+    delay_path = os.path.join(path, "scans")
+    t = os.listdir(delay_path)
+    t.sort()
+    n_delays = int(t[-1][-3:]) + 1
+    print("Detected {} delays".format(n_delays))
+
+    # Get size of one array
+    data_shape = np.load(os.path.join(avg_path, os.listdir(avg_path)[0])).shape
+
+    # Preallocate arrays
+    data = np.zeros((n_delays, *data_shape))
+    
+    # Load data into array
+    for delay, file in enumerate(os.listdir(avg_path)):
+        # Generate a path for each file
+        file_path = os.path.join(
+                                avg_path,
+                                file
+                                )
+        # write data in the corresponding
+        # delay dimension of transmission
+        data[delay] = np.load(file_path)
+    
+    return data
 
 def average_transmission_with_counts(data: ndarray, counts: ndarray):
     # Average data
@@ -146,31 +188,81 @@ def average_signal_without_weights(data: ndarray):
 
     return avg_signal
 
+def generate_legacy_data_format(difference_signal, delays, probe_axis):
+    # The old format has the following shape:
+    # one row for each delay and each pixel pair
+    # such that the columns are:
+    # (delay, wavenumber, difference signal, error)
+    # error is probably the s2s standard deviation 
+    # of a given pixel for a given delay
+
+    # The number of rows in the .txt file thus is
+    # number of delays * number of pixel pairs
+
+    # For the time being we are setting the weights to 1
+
+    old_format = np.ones((delays.size*probe_axis.size, 4))
+    old_format[:, 0] = np.repeat(delays, probe_axis.size)
+    old_format[:, 1] = np.tile(probe_axis, delays.size)
+    old_format[:, 2] = difference_signal.flatten()
+    
+    return old_format
+
 
 if __name__ == "__main__":
-    path = r"C:\Users\H-Lab\Desktop\DiPeptide python\20200901_20200901_DiPe_30cm_Lens_6muJpump_Python_000"
-    d, w, c, s = load_data_set(path)
-    t1 = average_transmission_with_counts(d, c)
-    t2 = average_transmission_with_weights(d, w)
-    t3 = average_signal_with_s2s(d, s)
-    t4 = average_signal_without_weights(d)
+    path = r"C:\Users\H-Lab\Desktop\20200923__000"
+    # Load data set
+    d, w, c, s, delays, probe_axis = load_data_set(path)
+    
+    # Load averaged data
+    d = load_average_data(path)
 
-    np.savetxt(os.path.join(path, "average_transmission_with_counts"), t1)
-    np.savetxt(os.path.join(path, "average_transmission_with_weights"), t2)
-    np.savetxt(os.path.join(path, "average_signal_with_s2s"), t3)
-    np.savetxt(os.path.join(path, "average_signal_without_weights"), t4)
+    # Load delays (ignore weights)
+    delays = np.load(os.path.join(path, "delay_file_20200923__000.npy"))[:, 0]
 
-    nrows = 8
-    ncols = 8
-    fig, axes = plt.subplots(nrows=nrows, ncols=ncols)
-    for freq in range(t1.shape[1]):
-        ax_idx = np.unravel_index(freq, (nrows, ncols))
-        axes[ax_idx].plot(t1[:, freq], label="average_transmission_with_counts", linewidth= 0.5)
-        axes[ax_idx].plot(t2[:, freq], label="average_transmission_with_weights", linewidth= 0.5)
-        axes[ax_idx].plot(t3[:, freq], label="average_signal_with_s2s", linewidth= 0.5)
-        axes[ax_idx].plot(t4[:, freq], label="average_signal_without_weights", linewidth= 0.5)
+    # Load wn axis (probe axis)
+    probe_axis = np.load(os.path.join(path, "probe_wn_axis_20200923__000.npy"))
+    
+    # Calculate spectra 
+    signal = - np.log10(d)
+    difference_signal = signal[:, :, 1] - signal[:, :, 0]
+    old_format = generate_legacy_data_format(difference_signal, delays, probe_axis)
+    np.savetxt(os.path.join(path, "old_format.txt"), old_format, delimiter="\t")
+    
+    # ------------------- Different data analysis methods -----------------
+    # Calculate spectra using different averaging methods
+    # t1_pos1 = average_transmission_with_counts(d, c)
+    # t2 = average_transmission_with_weights(d, w)
+    # t3 = average_signal_with_s2s(d, s)
+    # t4 = average_signal_without_weights(d)
 
-        axes[ax_idx].legend(fontsize=5)
+    # # Load second position
+    # path = r"C:\Users\H-Lab\Documents\data_analysis\split_sample_pos000"
+    # # Load data set
+    # d, w, c, s = load_data_set(path)
+    # # Calculate spectra using different averaging methods
+    # t1_pos0 = average_transmission_with_counts(d, c)
+
+    ## Save averaged data to text files
+    # np.savetxt(os.path.join(path, "average_transmission_with_counts"), t1)
+    # np.savetxt(os.path.join(path, "average_transmission_with_weights"), t2)
+    # np.savetxt(os.path.join(path, "average_signal_with_s2s"), t3)
+    # np.savetxt(os.path.join(path, "average_signal_without_weights"), t4)
+
+    ## Plot signal with respect to time for each pair of pixels
+    # nrows = 8
+    # ncols = 8
+    # fig, axes = plt.subplots(nrows=nrows, ncols=ncols)
+    # for freq in range(t1.shape[1]):
+    #     ax_idx = np.unravel_index(freq, (nrows, ncols))
+    #     axes[ax_idx].plot(t1[:, freq], label="average_transmission_with_counts", linewidth= 0.5)
+    #     axes[ax_idx].plot(t2[:, freq], label="average_transmission_with_weights", linewidth= 0.5)
+    #     axes[ax_idx].plot(t3[:, freq], label="average_signal_with_s2s", linewidth= 0.5)
+    #     axes[ax_idx].plot(t4[:, freq], label="average_signal_without_weights", linewidth= 0.5)
+
+    #     axes[ax_idx].legend(fontsize=5)
+    
+    ## Plot given pixel pair (20)
     # fig, ax = plt.subplots()
 
     # ax.plot(t1[:, 20], label="average_transmission_with_counts", linewidth= 0.5)
@@ -178,5 +270,64 @@ if __name__ == "__main__":
     # ax.plot(t3[:, 20], label="average_signal_with_s2s", linewidth= 0.5)
     # ax.plot(t4[:, 20], label="average_signal_without_weights", linewidth= 0.5)
     
-    # ax.set_xscale("log")
-    plt.show()
+    ## Plot signal with respect to frequency for each delay
+    # nrows = 4
+    # ncols = 7
+    # fig, axes = plt.subplots(nrows=nrows, ncols=ncols)
+    # for delay in range(t1_pos0.shape[0]):
+    #     ax_idx = np.unravel_index(delay, (nrows, ncols))
+    #     # axes[ax_idx].plot(t1_pos1[delay], label="pos 1 raw", linewidth= 0.5)
+    #     # axes[ax_idx].plot(t1_pos0[delay], label="pos 0 raw", linewidth= 0.5)
+    #     # axes[ax_idx].plot(t1_pos1[delay]-t1_pos1[0], label="pos 1 minus 40ps", linewidth= 0.5)
+    #     # axes[ax_idx].plot(t1_pos0[delay]-t1_pos0[0], label="pos 0 minus 40ps", linewidth= 0.5)
+    #     axes[ax_idx].plot(t1_pos1[delay]-t1_pos0[delay], label="pos 0 minus pos 1", linewidth= 0.5)
+    #     axes[ax_idx].plot((t1_pos1[delay] - t1_pos1[0]) - (t1_pos0[delay] - t1_pos0[0]), label="pos 0 minus pos 1 minus 40 ps", linewidth= 0.5)
+        
+    #     # axes[ax_idx].plot(t2[delay], label="average_transmission_with_weights", linewidth= 0.5)
+    #     # axes[ax_idx].plot(t3[delay], label="average_signal_with_s2s", linewidth= 0.5)
+    #     # axes[ax_idx].plot(t4[delay], label="average_signal_without_weights", linewidth= 0.5)
+
+    #     axes[ax_idx].legend(fontsize=5)
+    
+    # plt.show()
+
+    
+    # Plot whole data set as heatmap
+    # fig, ax = plt.subplots(ncols=2)
+    # t1 = t1_pos1
+    # positive_delays = delays > 0 
+    # # small_delays = delays < 10000
+    # # positive_delays = small_delays == positive_delays
+    
+    # print(positive_delays)
+    
+    # X, Y = np.meshgrid(delays[positive_delays], probe_axis)
+    
+    # ax[0].pcolormesh(
+    #             X,
+    #             Y,
+    #             (t1[positive_delays, :].T),
+    #             cmap="seismic")
+    # ax[0].set_xscale("log")
+    
+    # t1_bg = t1 - t1[0]
+    # ax[1].pcolormesh(
+    #             X,
+    #             Y,
+    #             t1_bg[positive_delays, :].T,
+    #             cmap="seismic")
+    # ax[1].set_xscale("log")
+    
+    # plt.show()
+    
+
+
+    # # Meshgrid for 2d plots
+    #     X, Y = np.meshgrid(self.delays[:,0], probe_axis)
+    #     # # Single scan
+    #     self.plot_ref["single time-signal heatmap"] = self.axes["single time-signal heatmap"].pcolormesh(
+    #                                                     X,
+    #                                                     Y,
+    #                                                     signal[0].T, # ????
+    #                                                     cmap = self.cmap
+    #     )
