@@ -289,11 +289,11 @@ if __name__ == "__main__":
 #%%
     # ------- Convert to old format
     print(t1.shape)
-    print(t4.shape)
+    # print(t4.shape)
     old_format = generate_legacy_data_format(t1, delays[:,0], probe_axis, pump_pixels[:,0].astype(int))
-    print(np.array_equal(t1[:, 2, :].T, old_format[66:98, 1:]))
-    print(t1[:, 2, :].T.shape, old_format[33:65, 1:].shape)
-    np.savetxt(os.path.join(path, "old_format.txt"), old_format, delimiter="\t")
+    # print(np.array_equal(t1[:, 2, :].T, old_format[66:98, 1:]))
+    # print(t1[:, 2, :].T.shape, old_format[33:65, 1:].shape)
+    # np.savetxt(os.path.join(path, "old_format.txt"), old_format, delimiter="\t")
     
     # # Load second position
     # path = r"C:\Users\H-Lab\Documents\data_analysis\split_sample_pos000"
