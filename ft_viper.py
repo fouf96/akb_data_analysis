@@ -104,8 +104,17 @@ def load_data_set(path):
     np.save(os.path.join(new_dir, "weights"), weights)
     np.save(os.path.join(new_dir, "counts"), counts)
 
+    # data dimensions (in this case)
+    # (same for weights and counts):
+    # scans
+    # delays
+    # pixel+1 (last entry is pyro interferogram)
+    # interferometer position
+    # uv/vis chopper on/off
+
     return data, weights, counts, vis_delays, ir_delays, probe_axis
 
+# still useful, but maybe broken in this particular case
 def load_average_data(path):
     avg_path = os.path.join(path, "averaged_data")
     
@@ -135,6 +144,7 @@ def load_average_data(path):
     
     return data
 
+# deprecated / does not apply for time domain data
 def average_time_domain_with_counts(data: ndarray, counts: ndarray):
     # Average data (transmission)
     avg_data = np.average(data, axis=0, weights=counts)
@@ -145,6 +155,8 @@ def average_time_domain_with_counts(data: ndarray, counts: ndarray):
 
     return signal
 
+
+# deprecated / does not apply for time domain data
 def average_time_domain_with_weights(data: ndarray, weights: ndarray):
     # Average data
     avg_data = np.average(data, axis=0, weights=weights)
@@ -155,7 +167,9 @@ def average_time_domain_with_weights(data: ndarray, weights: ndarray):
 
     return signal
 
+
 def generate_legacy_data_format(difference_signal, delays, probe_axis, pump_axis):
+    # Format for consumption by MATLAB CLS analysis toolbox
     # The old format has the following shape:
     # Not simple
     # See SL_lineshape_fitting_report.pdf p. 4
@@ -403,7 +417,16 @@ def generate_frequency_domain_data(
 def data_explorer(data):
     pass
 
-def variant0_possibilty0(data, counts, window_function=""):
+
+# note: question is the order of processing steps:
+# - fourier transform
+# - averaging
+# - calculation of viper signal
+# we know that ft should come before averaging because
+# of phase shift during long measurements
+# suggestion: ft, viper, averaging
+
+def variant0_possibility0(data, counts, window_function=""):
     # # # ----- Variant 0
     # # # Calculate frequency domain data for each scan
     # # # and calculate VIPER in the frequency domain
@@ -433,7 +456,7 @@ def variant0_possibilty0(data, counts, window_function=""):
     np.savetxt(os.path.join(path,"ir_2d_plus_viper_v0_p0_" + window_function + "_.txt"), ir_2d_plus_viper_txt)
     np.savetxt(os.path.join(path,"viper_v0_p0_" + window_function + "_.txt"), viper_v0_p0_txt)
 
-def variant0_possibilty1(data, counts, window_function=""):
+def variant0_possibility1(data, counts, window_function=""):
     # # # ----- Variant 0
     # # # Calculate frequency domain data for each scan
     # # # and calculate VIPER in the frequency domain
@@ -472,13 +495,13 @@ def variant1(data, counts, window_function=""):
     # frequency domain data 
     # and calculate VIPER in the frequency domain
     scan_averaged_data = np.average(
-            d,
+            data,
             axis = 0,
-            weights = c
+            weights = counts
         )
     time_domain_absorption_v1 = - np.log10(scan_averaged_data[:, :-1])
     interferograms = scan_averaged_data[:, -1]
-    counts_v1 = c.sum(axis=0)
+    counts_v1 = counts.sum(axis=0)
 
     v1 = generate_frequency_domain_data(time_domain_absorption_v1, interferograms, counts_v1)
 
@@ -523,7 +546,7 @@ def variant2(data, counts, window_function=""):
     viper_v2_txt = generate_legacy_data_format(viper_v2_avg[:, :,opa_range], ir_delays[:, 0], probe_axis, pump_axis)
     np.savetxt(os.path.join(path,"viper_v2_" + window_function + "_.txt"), viper_v2_txt)
 
-def variant3_possibilty0(data, counts, window_function=""):
+def variant3_possibility0(data, counts, window_function=""):
     # ------ Variant 3
     # --- Possibility 0
     # Calculate VIPER signal for each scan then average
@@ -547,7 +570,7 @@ def variant3_possibilty0(data, counts, window_function=""):
     viper_v3_p0_txt = generate_legacy_data_format(viper_v3_p0[:, :, opa_range], ir_delays[:, 0], probe_axis, pump_axis)
     np.savetxt(os.path.join(path,"viper_v3_p0_" + window_function + "_.txt"), viper_v3_p0_txt)
 
-def variant3_possibilty1(data, counts, window_function=""):
+def variant3_possibility1(data, counts, window_function=""):
     # ------ Variant 3
     # --- Possibility 1
     # Average scans then calculate VIPER
@@ -596,9 +619,9 @@ if __name__ == "__main__":
                             "barthann"]
 
     for apo_func in apodization_functions:
-        variant0_possibilty0(d, c, apo_func)
-        variant0_possibilty1(d, c, apo_func)
+        variant0_possibility0(d, c, apo_func)
+        variant0_possibility1(d, c, apo_func)
         variant1(d,c, apo_func)
         variant2(d, c, apo_func)
-        variant3_possibilty0(d, c, apo_func)
-        variant3_possibilty1(d, c, apo_func)
+        variant3_possibility0(d, c, apo_func)
+        variant3_possibility1(d, c, apo_func)
