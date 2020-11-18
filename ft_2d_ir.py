@@ -353,7 +353,7 @@ def variant1(data, counts, window_function=""):
 
 # %%
 if __name__ == "__main__":
-    path = r"/Users/arthun/Downloads/20201023_20201023_RDC_Hexan_FT2DIR_test_mA_000"
+    path = r"C:\data\Dropbox (Wille Biophysik)\Wille Biophysik Team Folder\hendrik_sample_2dir_data\20201023_20201023_RDC_Hexan_FT2DIR_test_mA_000"
     # Load data set
     d, w, c, ir_delays, probe_axis = load_data_set(path)
     print(d.shape)
