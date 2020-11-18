@@ -156,7 +156,6 @@ def average_time_domain_with_counts(data: ndarray, counts: ndarray):
 
     return signal
 
-
 # deprecated / does not apply for time domain data
 def average_time_domain_with_weights(data: ndarray, weights: ndarray):
     # Average data
@@ -167,7 +166,6 @@ def average_time_domain_with_weights(data: ndarray, weights: ndarray):
     signal = np.take(absorption, 1, axis=-1) - np.take(absorption, 0, axis=-1)
 
     return signal
-
 
 def generate_legacy_data_format(difference_signal, delays, probe_axis, pump_axis):
     # Format for consumption by MATLAB CLS analysis toolbox
@@ -203,217 +201,100 @@ def generate_frequency_domain_data(
         window_function = "cos_square"
         ):
 
-    # We cannot preallocate an array
-    # that will hold the frequency domain data
-    # because we do not know the length that
-    # will result from cutting of at the zerobin
-    # and the zeropadding
-    # for delay in 
-    # Check if last axis is chopper or
-    # interferometer states
-    # ------------------------------------------------
-    if time_domain_data.shape[-1] == 2:
-        chopper_states = time_domain_data.shape[-1]
-        if len(time_domain_data.shape) == 5:
-            # # Process 0th scan and 0th delay to get
-            # # the frequency domain array size
-            frequency_domain_data, interferogram_info = dp.process_ft2dir_data(
-                            time_domain_data[0, 0, :, :, 0],
-                            interferograms[0, 0, :, 0],
-                            window_function = window_function,
-                            zero_pad_factor = zero_pad_factor
-                        )
+    # There are two possibilities of averaging
+    # the data. 
+    # Variant 0: Calculate frequency domain data
+    # then average scans
+    # Variant 1: Average time domain data then
+    # transform to frequency domain
+    if len(time_domain_data.shape) == 4: # Variant 0
+        delay_axis = 1
+        # # Process 0th scan and 0th delay to get
+        # # the frequency domain array size
+        frequency_domain_data, interferogram_info = dp.process_ft2dir_data(
+                        time_domain_data[0, 0, :, :],
+                        interferograms[0, 0, :],
+                        window_function = window_function,
+                        zero_pad_factor = zero_pad_factor
+                    )
 
-            frequency_domain_data = np.zeros(
-                (
-                time_domain_data.shape[0], # scans
-                time_domain_data.shape[1], # delays
-                *frequency_domain_data.shape, # pixel, freq domain
-                chopper_states # chopper states
-                )
+        frequency_domain_data = np.zeros(
+            (
+            time_domain_data.shape[0], # scans
+            time_domain_data.shape[1], # delays
+            *frequency_domain_data.shape, # pixel, freq domain
             )
+        )
 
-            opa_pump_spectrum = np.zeros(
-                (
-                time_domain_data.shape[0], # scans
-                time_domain_data.shape[1], # delays
-                interferogram_info[2].size,
-                chopper_states # chopper states
-                )
+        opa_pump_spectrum = np.zeros(
+            (
+            time_domain_data.shape[0], # scans
+            time_domain_data.shape[1], # delays
+            interferogram_info[2].size,
             )
+        )
 
-            opa_range = [np.array([]), np.array([])] # This bogus when averaging interferograms
-            
-            pump_frequency_axis = interferogram_info[3]
-
-            # Average interferogram over chopper states
-            interferograms = np.average(
-                interferograms,
-                axis = -1,
-                weights = counts[:,:, -1]
-            )
-
-            for scan in range(time_domain_data.shape[0]):
-                for delay in range(time_domain_data.shape[1]):
-                    for chopper_state in range(chopper_states):
-                        frequency_domain_data[scan, delay, :, :, chopper_state], interferogram_info  = dp.process_ft2dir_data(
-                                time_domain_data[scan, delay, :, :, chopper_state],
-                                interferograms[scan, delay],
-                                window_function = window_function,
-                                zero_pad_factor = zero_pad_factor
-                            )
-                        
-                        opa_pump_spectrum[scan, delay, :, chopper_state] = np.abs(interferogram_info[2])
-                        if opa_range[chopper_state].size < interferogram_info[4][1].size:
-                            opa_range[chopper_state] = interferogram_info[4][1]
-
-            return frequency_domain_data, opa_pump_spectrum, opa_range, pump_frequency_axis
-
-    # ------------------------------------------------
-        else:
-            # # Process 0th scan and 0th delay to get
-            # # the frequency domain array size
-            frequency_domain_data, interferogram_info = dp.process_ft2dir_data(
-                            time_domain_data[0, :, :, 0],
-                            interferograms[0,:,0],
-                            window_function = window_function,
-                            zero_pad_factor = zero_pad_factor
-                        )
-
-            frequency_domain_data = np.zeros(
-                (
-                time_domain_data.shape[0], # delay
-                *frequency_domain_data.shape, # pixel, freq domain
-                chopper_states # chopper states
-                )
-            )
-
-            opa_pump_spectrum = np.zeros(
-                (
-                time_domain_data.shape[0], # delay
-                interferogram_info[2].size,
-                chopper_states # chopper states
-                )
-            )
-
-            opa_range = [np.array([]), np.array([])]     
-            
-            pump_frequency_axis = interferogram_info[3]
-            
-            # Average interferogram over chopper states
-            print(interferograms.shape)
-            print(counts.shape)
-            interferograms = np.average(
-                interferograms,
-                axis = -1,
-                weights = counts[:, -1]
-            )
-
-            for delay in range(time_domain_data.shape[0]):
-                for chopper_state in range(chopper_states):
-                    frequency_domain_data[delay, :, :, chopper_state], interferogram_info  = dp.process_ft2dir_data(
-                            time_domain_data[delay, :, :, chopper_state],
-                            interferograms[delay],
-                            window_function = window_function,
-                            zero_pad_factor = zero_pad_factor
-                        )
-
-                    opa_pump_spectrum[delay, :, chopper_state] = np.abs(interferogram_info[2])
-                    if opa_range[chopper_state].size < interferogram_info[4][1].size:
-                        opa_range[chopper_state] = interferogram_info[4][1]
-                    
-            return frequency_domain_data, opa_pump_spectrum, opa_range, pump_frequency_axis
+        opa_range = np.array([]) # This bogus when averaging interferograms
         
-            
-    else:
-        if len(time_domain_data.shape) == 4:
-            delay_axis = 1
-            # # Process 0th scan and 0th delay to get
-            # # the frequency domain array size
-            frequency_domain_data, interferogram_info = dp.process_ft2dir_data(
-                            time_domain_data[0, 0, :, :],
-                            interferograms[0, 0, :],
-                            window_function = window_function,
-                            zero_pad_factor = zero_pad_factor
-                        )
+        pump_frequency_axis = interferogram_info[3]
 
-            frequency_domain_data = np.zeros(
-                (
-                time_domain_data.shape[0], # scans
-                time_domain_data.shape[1], # delays
-                *frequency_domain_data.shape, # pixel, freq domain
-                )
-            )
-
-            opa_pump_spectrum = np.zeros(
-                (
-                time_domain_data.shape[0], # scans
-                time_domain_data.shape[1], # delays
-                interferogram_info[2].size,
-                )
-            )
-
-            opa_range = np.array([]) # This bogus when averaging interferograms
-            
-            pump_frequency_axis = interferogram_info[3]
-
-            for scan in range(time_domain_data.shape[0]):
-                for delay in range(time_domain_data.shape[1]):
-                    frequency_domain_data[scan, delay, :, :], interferogram_info  = dp.process_ft2dir_data(
-                            time_domain_data[scan, delay, :, :],
-                            interferograms[scan, delay],
-                            window_function = window_function,
-                            zero_pad_factor = zero_pad_factor
-                        )
-                    
-                    opa_pump_spectrum[scan, delay, :] = np.abs(interferogram_info[2])
-                    if opa_range.size < interferogram_info[4][1].size:
-                        opa_range = interferogram_info[4][1]
-
-            return frequency_domain_data, opa_pump_spectrum, opa_range, pump_frequency_axis
-        else:
-            delay_axis = 0
-            # # Process 0th delay to get
-            # # the frequency domain array size
-            frequency_domain_data, interferogram_info = dp.process_ft2dir_data(
-                            time_domain_data[0, :, :],
-                            interferograms[0],
-                            window_function = window_function,
-                            zero_pad_factor = zero_pad_factor
-                        )
-
-            frequency_domain_data = np.zeros(
-                (
-                time_domain_data.shape[0], # delays
-                *frequency_domain_data.shape, # pixel, freq domain
-                )
-            )
-
-            opa_pump_spectrum = np.zeros(
-                (
-                time_domain_data.shape[0], # delays
-                interferogram_info[2].size,
-                )
-            )
-
-            opa_range = np.array([]) # This bogus when averaging interferograms
-            
-            pump_frequency_axis = interferogram_info[3]
-
-            for delay in range(time_domain_data.shape[0]):
-                frequency_domain_data[delay, :, :], interferogram_info  = dp.process_ft2dir_data(
-                        time_domain_data[delay, :, :],
-                        interferograms[delay],
+        for scan in range(time_domain_data.shape[0]):
+            for delay in range(time_domain_data.shape[1]):
+                frequency_domain_data[scan, delay, :, :], interferogram_info  = dp.process_ft2dir_data(
+                        time_domain_data[scan, delay, :, :],
+                        interferograms[scan, delay],
                         window_function = window_function,
                         zero_pad_factor = zero_pad_factor
                     )
                 
-                opa_pump_spectrum[delay, :] = np.abs(interferogram_info[2])
+                opa_pump_spectrum[scan, delay, :] = np.abs(interferogram_info[2])
                 if opa_range.size < interferogram_info[4][1].size:
                     opa_range = interferogram_info[4][1]
 
-            return frequency_domain_data, opa_pump_spectrum, opa_range, pump_frequency_axis
+        return frequency_domain_data, opa_pump_spectrum, opa_range, pump_frequency_axis
+        
+    else: # Variant 1
+        delay_axis = 0
+        # # Process 0th delay to get
+        # # the frequency domain array size
+        frequency_domain_data, interferogram_info = dp.process_ft2dir_data(
+                        time_domain_data[0, :, :],
+                        interferograms[0],
+                        window_function = window_function,
+                        zero_pad_factor = zero_pad_factor
+                    )
 
+        frequency_domain_data = np.zeros(
+            (
+            time_domain_data.shape[0], # delays
+            *frequency_domain_data.shape, # pixel, freq domain
+            )
+        )
+
+        opa_pump_spectrum = np.zeros(
+            (
+            time_domain_data.shape[0], # delays
+            interferogram_info[2].size,
+            )
+        )
+
+        opa_range = np.array([]) # This bogus when averaging interferograms
+        
+        pump_frequency_axis = interferogram_info[3]
+
+        for delay in range(time_domain_data.shape[0]):
+            frequency_domain_data[delay, :, :], interferogram_info  = dp.process_ft2dir_data(
+                    time_domain_data[delay, :, :],
+                    interferograms[delay],
+                    window_function = window_function,
+                    zero_pad_factor = zero_pad_factor
+                )
+            
+            opa_pump_spectrum[delay, :] = np.abs(interferogram_info[2])
+            if opa_range.size < interferogram_info[4][1].size:
+                opa_range = interferogram_info[4][1]
+
+        return frequency_domain_data, opa_pump_spectrum, opa_range, pump_frequency_axis
 
 def data_explorer(data):
     pass
@@ -427,10 +308,10 @@ def data_explorer(data):
 # of phase shift during long measurements
 # suggestion: ft, viper, averaging
 
-def variant0_possibility0(data, counts, window_function=""):
-    # # # ----- Variant 0
-    # # # Calculate frequency domain data for each scan
-    # # # and calculate VIPER in the frequency domain
+def variant0(data, counts, window_function=""):
+    # ----- Variant 0
+    # Calculate frequency domain data for each scan
+    # and then average
     time_domain_absorption_v0 = - np.log10(data[:,:,:-1])
     interferograms = data[:,:,-1]
     v0 = generate_frequency_domain_data(time_domain_absorption_v0, interferograms, counts, window_function=window_function)
@@ -438,63 +319,18 @@ def variant0_possibility0(data, counts, window_function=""):
     pump_axis = v0[3][opa_range]
     frequency_domain_data_v0 = v0[0]
 
-    # Two possibilities - calculate VIPER for each scan then average 
-    # or other way around
-    # Possibility 0
-    # Average then calculate VIPER
+    # Average
     avg_frequency_domain_data_v0 = np.average(frequency_domain_data_v0, axis=0)
 
     ir_2d = avg_frequency_domain_data_v0[:, :, opa_range]
     ir_2d_txt = generate_legacy_data_format(ir_2d, ir_delays[:,0], probe_axis, pump_axis)
-    
-    # ir_2d_plus_viper = avg_frequency_domain_data_v0[:, :, opa_range, 1]
-    # ir_2d_plus_viper_txt = generate_legacy_data_format(ir_2d_plus_viper, ir_delays[:, 0], probe_axis, pump_axis)
-    
-    # viper_v0_p0 = avg_frequency_domain_data_v0[:, :,opa_range, 1] - avg_frequency_domain_data_v0[:, :, opa_range, 0]
-    # viper_v0_p0_txt = generate_legacy_data_format(viper_v0_p0, ir_delays[:, 0], probe_axis, pump_axis)
-    
-    np.savetxt(os.path.join(path, "ir_2d_v0_p0_" + window_function + "_.txt"), ir_2d_txt)
-    # np.savetxt(os.path.join(path,"ir_2d_plus_viper_v0_p0_" + window_function + "_.txt"), ir_2d_plus_viper_txt)
-    # np.savetxt(os.path.join(path,"viper_v0_p0_" + window_function + "_.txt"), viper_v0_p0_txt)
 
-def variant0_possibility1(data, counts, window_function=""):
-    # # # ----- Variant 0
-    # # # Calculate frequency domain data for each scan
-    # # # and calculate VIPER in the frequency domain
-    time_domain_absorption_v0 = - np.log10(data[:,:,:-1])
-    interferograms = data[:,:,-1]
-    v0 = generate_frequency_domain_data(time_domain_absorption_v0, interferograms, counts, window_function=window_function)
-    opa_range = v0[2][0]
-    pump_axis = v0[3][opa_range]
-    frequency_domain_data_v0 = v0[0]
-
-    # Two possibilities - calculate VIPER for each scan then average 
-    # or other way around
-    # #Possibility 1
-    # # Calculate VIPER then average
-    viper_v0_p1 = frequency_domain_data_v0.take(1, axis=-1) - frequency_domain_data_v0.take(0, axis=-1)
-    viper_v0_p1_avg = np.average(viper_v0_p1, axis=0)
-
-    # Average together freq domain data to get 2D-IR and 2D-IR + VIPER
-    avg_frequency_domain_data_v0 = np.average(frequency_domain_data_v0, axis=0)
-    
-    ir_2d = avg_frequency_domain_data_v0[:, :, opa_range]
-    ir_2d_txt = generate_legacy_data_format(ir_2d, ir_delays[:,0], probe_axis, pump_axis)
-    
-    # ir_2d_plus_viper = avg_frequency_domain_data_v0[:, :, opa_range, 1]
-    # ir_2d_plus_viper_txt = generate_legacy_data_format(ir_2d_plus_viper, ir_delays[:, 0], probe_axis, pump_axis)
-    
-    # viper_v0_p1_txt = generate_legacy_data_format(viper_v0_p1_avg[:, :,opa_range], ir_delays[:, 0], probe_axis, pump_axis)
-    
-    np.savetxt(os.path.join(path, "ir_2d_v0_p1_" + window_function + "_.txt"), ir_2d_txt)
-    # np.savetxt(os.path.join(path,"ir_2d_plus_viper_v0_p1_" + window_function + "_.txt"), ir_2d_plus_viper_txt)
-    # np.savetxt(os.path.join(path,"viper_v0_p1_" + window_function + "_.txt"), viper_v0_p1_txt)
+    np.savetxt(os.path.join(path, "ir_2d_v0" + window_function + "_.txt"), ir_2d_txt)
 
 def variant1(data, counts, window_function=""):
     # ----- Variant 1 
     # Average time domain data over scans then calculate 
     # frequency domain data 
-    # and calculate VIPER in the frequency domain
     scan_averaged_data = np.average(
             data,
             axis = 0,
@@ -513,92 +349,11 @@ def variant1(data, counts, window_function=""):
     ir_2d = frequency_domain_data_v1[:, :, opa_range]
     ir_2d_txt = generate_legacy_data_format(ir_2d, ir_delays[:,0], probe_axis, pump_axis)
     
-    # ir_2d_plus_viper = frequency_domain_data_v1[:, :, opa_range, 1]
-    # ir_2d_plus_viper_txt = generate_legacy_data_format(ir_2d_plus_viper, ir_delays[:, 0], probe_axis, pump_axis)
-    
-    # viper_v1 = frequency_domain_data_v1[:, :, opa_range, 1] - frequency_domain_data_v1[:, :, opa_range, 0]
-    # viper_v1_txt = generate_legacy_data_format(viper_v1, ir_delays[:, 0], probe_axis, pump_axis)
-    
     np.savetxt(os.path.join(path, "ir_2d_v1" + window_function + "_.txt"), ir_2d_txt)
-    # np.savetxt(os.path.join(path,"ir_2d_plus_viper_v1" + window_function + "_.txt"), ir_2d_plus_viper_txt)
-    # np.savetxt(os.path.join(path,"viper_v1" + window_function + "_.txt"), viper_v1_txt)
-
-def variant2(data, counts, window_function=""):
-    # ----- Variant 2
-    # Calculate VIPER in time domain 
-    # then fourier transform then average
-    time_domain_absorption = - np.log10(data[:,:,:-1])
-    time_domain_viper = time_domain_absorption.take(1, axis=-1) - time_domain_absorption.take(0, axis=-1)
-    
-    # Average interferogram
-    interferograms = np.average(d[:,:,-1], weights=counts[:,:,-1], axis=-1)
-    counts_v2 = counts.sum(axis=-1)
-    v2 = generate_frequency_domain_data(time_domain_viper, interferograms, counts_v2)
-
-    opa_range = v2[2]
-    pump_axis = v2[3][opa_range]
-    viper_v2 = v2[0]
-
-    # Average frequency domain scans
-    viper_v2_avg = np.average(viper_v2, axis=0)
-
-    # Generate legacy data format (this time it is not possible to generate
-    # 2D-IR and 2D-IR + VIPER)
-    viper_v2_txt = generate_legacy_data_format(viper_v2_avg[:, :,opa_range], ir_delays[:, 0], probe_axis, pump_axis)
-    np.savetxt(os.path.join(path,"viper_v2_" + window_function + "_.txt"), viper_v2_txt)
-
-def variant3_possibility0(data, counts, window_function=""):
-    # ------ Variant 3
-    # --- Possibility 0
-    # Calculate VIPER signal for each scan then average
-    # in time domain then fourier transform
-    
-    time_domain_absorption = - np.log10(d[:,:,:-1])
-    time_domain_viper = time_domain_absorption.take(1, axis=-1) - time_domain_absorption.take(0, axis=-1)
-    interferograms = np.average(data[:,:,-1], axis=-1, weights=counts[:,:,-1])
-    c_v3 = counts.sum(axis=-1)
-    time_domain_viper_avg = np.average(time_domain_viper, axis=0, weights=c_v3[:,:,:-1])
-    interferograms_avg = np.average(interferograms, axis=0, weights=c_v3[:,:,-1])
-    counts_v3 = c_v3.sum(axis=0)
-    v3_p0 = generate_frequency_domain_data(time_domain_viper_avg, interferograms_avg, counts_v3)
-
-    opa_range = v3_p0[2]
-    pump_axis = v3_p0[3][opa_range]
-    viper_v3_p0 = v3_p0[0]
-
-    # Generate legacy data format (this time it is not possible to generate
-    # 2D-IR and 2D-IR + VIPER)
-    viper_v3_p0_txt = generate_legacy_data_format(viper_v3_p0[:, :, opa_range], ir_delays[:, 0], probe_axis, pump_axis)
-    np.savetxt(os.path.join(path,"viper_v3_p0_" + window_function + "_.txt"), viper_v3_p0_txt)
-
-def variant3_possibility1(data, counts, window_function=""):
-    # ------ Variant 3
-    # --- Possibility 1
-    # Average scans then calculate VIPER
-    # in time domain then perform fourier transform
-    time_domain_avg = np.average(data, axis=0, weights=counts)
-    time_domain_absorption = - np.log10(time_domain_avg[:,:,:-1])
-    time_domain_viper = time_domain_absorption.take(1, axis=-1) - time_domain_absorption.take(0, axis=-1)
-    counts_scan_avg = counts.sum(axis=0)
-    print(data.shape[1])
-    print(counts_scan_avg.shape[1])
-    interferograms = np.average(time_domain_avg[:,-1], axis=-1, weights=counts_scan_avg[:,-1])
-    counts_v3_p1 = counts_scan_avg.sum(axis=-1)
-    v3_p1 = generate_frequency_domain_data(time_domain_viper[:,:-1], interferograms, counts_v3_p1)
-
-    opa_range = v3_p1[2]
-    pump_axis = v3_p1[3][opa_range]
-    viper_v3_p1 = v3_p1[0]
-
-    # Generate legacy data format (this time it is not possible to generate
-    # 2D-IR and 2D-IR + VIPER)
-    viper_v3_p1_txt = generate_legacy_data_format(viper_v3_p1[:, :, opa_range], ir_delays[:, 0], probe_axis, pump_axis)
-    np.savetxt(os.path.join(path,"viper_v3_p1_" + window_function + "_.txt"), viper_v3_p1_txt)
-
 
 # %%
 if __name__ == "__main__":
-    path = r"C:\data\Dropbox (Wille Biophysik)\Wille Biophysik Team Folder\hendrik_sample_2dir_data\20201023_20201023_RDC_Hexan_FT2DIR_test_mA_000"
+    path = r"/Users/arthun/Downloads/20201023_20201023_RDC_Hexan_FT2DIR_test_mA_000"
     # Load data set
     d, w, c, ir_delays, probe_axis = load_data_set(path)
     print(d.shape)
@@ -623,9 +378,5 @@ if __name__ == "__main__":
     apodization_functions = ["cos_square"]
 
     for apo_func in apodization_functions:
-        variant0_possibility0(d, c, apo_func)
-        variant0_possibility1(d, c, apo_func)
+        variant0(d, c, apo_func)
         variant1(d, c, apo_func)
-        # variant2(d, c, apo_func)
-        # variant3_possibility0(d, c, apo_func)
-        # variant3_possibility1(d, c, apo_func)
