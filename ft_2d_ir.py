@@ -15,8 +15,8 @@ def load_data_set(path):
     filename = os.path.basename(path)
     # Load delay
     # and probe_wn_axis etc.
-    vis_delays = np.load(os.path.join(path, "vis_delay_file_" + filename +".npy")) 
-    ir_delays = np.load(os.path.join(path, "ir_delay_file_" + filename +".npy")) 
+    # vis_delays = np.load(os.path.join(path, "vis_delay_file_" + filename +".npy")) 
+    ir_delays = np.load(os.path.join(path, "delay_file_" + filename +".npy")) 
     probe_axis = np.load(os.path.join(path, "probe_wn_axis_" + filename +".npy"))
 
     # Check whether combined data set
@@ -32,7 +32,7 @@ def load_data_set(path):
         weights = np.load(os.path.join(f_path, "weights.npy"))
         counts = np.load(os.path.join(f_path, "counts.npy"))
         
-        return data, weights, counts, vis_delays, ir_delays, probe_axis
+        return data, weights, counts, ir_delays, probe_axis
     
     # Get delay count
     n_delays = ir_delays.shape[0]
@@ -113,7 +113,7 @@ def load_data_set(path):
     # interferometer position
     # uv/vis chopper on/off
 
-    return data, weights, counts, vis_delays, ir_delays, probe_axis
+    return data, weights, counts, ir_delays, probe_axis
 
 # still useful, but maybe broken in this particular case
 def load_average_data(path):
@@ -444,18 +444,18 @@ def variant0_possibility0(data, counts, window_function=""):
     # Average then calculate VIPER
     avg_frequency_domain_data_v0 = np.average(frequency_domain_data_v0, axis=0)
 
-    ir_2d = avg_frequency_domain_data_v0[:, :, opa_range, 0]
+    ir_2d = avg_frequency_domain_data_v0[:, :, opa_range]
     ir_2d_txt = generate_legacy_data_format(ir_2d, ir_delays[:,0], probe_axis, pump_axis)
     
-    ir_2d_plus_viper = avg_frequency_domain_data_v0[:, :, opa_range, 1]
-    ir_2d_plus_viper_txt = generate_legacy_data_format(ir_2d_plus_viper, ir_delays[:, 0], probe_axis, pump_axis)
+    # ir_2d_plus_viper = avg_frequency_domain_data_v0[:, :, opa_range, 1]
+    # ir_2d_plus_viper_txt = generate_legacy_data_format(ir_2d_plus_viper, ir_delays[:, 0], probe_axis, pump_axis)
     
-    viper_v0_p0 = avg_frequency_domain_data_v0[:, :,opa_range, 1] - avg_frequency_domain_data_v0[:, :, opa_range, 0]
-    viper_v0_p0_txt = generate_legacy_data_format(viper_v0_p0, ir_delays[:, 0], probe_axis, pump_axis)
+    # viper_v0_p0 = avg_frequency_domain_data_v0[:, :,opa_range, 1] - avg_frequency_domain_data_v0[:, :, opa_range, 0]
+    # viper_v0_p0_txt = generate_legacy_data_format(viper_v0_p0, ir_delays[:, 0], probe_axis, pump_axis)
     
     np.savetxt(os.path.join(path, "ir_2d_v0_p0_" + window_function + "_.txt"), ir_2d_txt)
-    np.savetxt(os.path.join(path,"ir_2d_plus_viper_v0_p0_" + window_function + "_.txt"), ir_2d_plus_viper_txt)
-    np.savetxt(os.path.join(path,"viper_v0_p0_" + window_function + "_.txt"), viper_v0_p0_txt)
+    # np.savetxt(os.path.join(path,"ir_2d_plus_viper_v0_p0_" + window_function + "_.txt"), ir_2d_plus_viper_txt)
+    # np.savetxt(os.path.join(path,"viper_v0_p0_" + window_function + "_.txt"), viper_v0_p0_txt)
 
 def variant0_possibility1(data, counts, window_function=""):
     # # # ----- Variant 0
@@ -478,17 +478,17 @@ def variant0_possibility1(data, counts, window_function=""):
     # Average together freq domain data to get 2D-IR and 2D-IR + VIPER
     avg_frequency_domain_data_v0 = np.average(frequency_domain_data_v0, axis=0)
     
-    ir_2d = avg_frequency_domain_data_v0[:, :, opa_range, 0]
+    ir_2d = avg_frequency_domain_data_v0[:, :, opa_range]
     ir_2d_txt = generate_legacy_data_format(ir_2d, ir_delays[:,0], probe_axis, pump_axis)
     
-    ir_2d_plus_viper = avg_frequency_domain_data_v0[:, :, opa_range, 1]
-    ir_2d_plus_viper_txt = generate_legacy_data_format(ir_2d_plus_viper, ir_delays[:, 0], probe_axis, pump_axis)
+    # ir_2d_plus_viper = avg_frequency_domain_data_v0[:, :, opa_range, 1]
+    # ir_2d_plus_viper_txt = generate_legacy_data_format(ir_2d_plus_viper, ir_delays[:, 0], probe_axis, pump_axis)
     
-    viper_v0_p1_txt = generate_legacy_data_format(viper_v0_p1_avg[:, :,opa_range], ir_delays[:, 0], probe_axis, pump_axis)
+    # viper_v0_p1_txt = generate_legacy_data_format(viper_v0_p1_avg[:, :,opa_range], ir_delays[:, 0], probe_axis, pump_axis)
     
     np.savetxt(os.path.join(path, "ir_2d_v0_p1_" + window_function + "_.txt"), ir_2d_txt)
-    np.savetxt(os.path.join(path,"ir_2d_plus_viper_v0_p1_" + window_function + "_.txt"), ir_2d_plus_viper_txt)
-    np.savetxt(os.path.join(path,"viper_v0_p1_" + window_function + "_.txt"), viper_v0_p1_txt)
+    # np.savetxt(os.path.join(path,"ir_2d_plus_viper_v0_p1_" + window_function + "_.txt"), ir_2d_plus_viper_txt)
+    # np.savetxt(os.path.join(path,"viper_v0_p1_" + window_function + "_.txt"), viper_v0_p1_txt)
 
 def variant1(data, counts, window_function=""):
     # ----- Variant 1 
@@ -510,18 +510,18 @@ def variant1(data, counts, window_function=""):
     pump_axis = v1[3][opa_range]
     frequency_domain_data_v1 = v1[0]
 
-    ir_2d = frequency_domain_data_v1[:, :, opa_range, 0]
+    ir_2d = frequency_domain_data_v1[:, :, opa_range]
     ir_2d_txt = generate_legacy_data_format(ir_2d, ir_delays[:,0], probe_axis, pump_axis)
     
-    ir_2d_plus_viper = frequency_domain_data_v1[:, :, opa_range, 1]
-    ir_2d_plus_viper_txt = generate_legacy_data_format(ir_2d_plus_viper, ir_delays[:, 0], probe_axis, pump_axis)
+    # ir_2d_plus_viper = frequency_domain_data_v1[:, :, opa_range, 1]
+    # ir_2d_plus_viper_txt = generate_legacy_data_format(ir_2d_plus_viper, ir_delays[:, 0], probe_axis, pump_axis)
     
-    viper_v1 = frequency_domain_data_v1[:, :, opa_range, 1] - frequency_domain_data_v1[:, :, opa_range, 0]
-    viper_v1_txt = generate_legacy_data_format(viper_v1, ir_delays[:, 0], probe_axis, pump_axis)
+    # viper_v1 = frequency_domain_data_v1[:, :, opa_range, 1] - frequency_domain_data_v1[:, :, opa_range, 0]
+    # viper_v1_txt = generate_legacy_data_format(viper_v1, ir_delays[:, 0], probe_axis, pump_axis)
     
     np.savetxt(os.path.join(path, "ir_2d_v1" + window_function + "_.txt"), ir_2d_txt)
-    np.savetxt(os.path.join(path,"ir_2d_plus_viper_v1" + window_function + "_.txt"), ir_2d_plus_viper_txt)
-    np.savetxt(os.path.join(path,"viper_v1" + window_function + "_.txt"), viper_v1_txt)
+    # np.savetxt(os.path.join(path,"ir_2d_plus_viper_v1" + window_function + "_.txt"), ir_2d_plus_viper_txt)
+    # np.savetxt(os.path.join(path,"viper_v1" + window_function + "_.txt"), viper_v1_txt)
 
 def variant2(data, counts, window_function=""):
     # ----- Variant 2
@@ -598,9 +598,9 @@ def variant3_possibility1(data, counts, window_function=""):
 
 # %%
 if __name__ == "__main__":
-    path = r"C:\Users\H-Lab\Documents\data_analysis\20201016_ITx_FTVIPER_186_000"
+    path = r"C:\data\Dropbox (Wille Biophysik)\Wille Biophysik Team Folder\hendrik_sample_2dir_data\20201023_20201023_RDC_Hexan_FT2DIR_test_mA_000"
     # Load data set
-    d, w, c, ir_delays, vis_delays, probe_axis = load_data_set(path)
+    d, w, c, ir_delays, probe_axis = load_data_set(path)
     print(d.shape)
 # %%
     apodization_functions = [
@@ -619,10 +619,13 @@ if __name__ == "__main__":
                             "nuttall",
                             "barthann"]
 
+    # cheating to curb the output
+    apodization_functions = ["cos_square"]
+
     for apo_func in apodization_functions:
         variant0_possibility0(d, c, apo_func)
         variant0_possibility1(d, c, apo_func)
-        variant1(d,c, apo_func)
-        variant2(d, c, apo_func)
-        variant3_possibility0(d, c, apo_func)
-        variant3_possibility1(d, c, apo_func)
+        variant1(d, c, apo_func)
+        # variant2(d, c, apo_func)
+        # variant3_possibility0(d, c, apo_func)
+        # variant3_possibility1(d, c, apo_func)
