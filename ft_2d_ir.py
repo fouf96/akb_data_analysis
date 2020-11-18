@@ -4,7 +4,8 @@ import os
 import numpy as np
 from numpy import ndarray
 
-import data_processing as dp
+import data_processing_offline as dp
+# from data_processing import process_ft2dir_data
 
 from matplotlib import pyplot as plt
 
