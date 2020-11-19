@@ -315,7 +315,7 @@ def variant0(data, counts, window_function=""):
     time_domain_absorption_v0 = - np.log10(data[:,:,:-1])
     interferograms = data[:,:,-1]
     v0 = generate_frequency_domain_data(time_domain_absorption_v0, interferograms, counts, window_function=window_function)
-    opa_range = v0[2][0]
+    opa_range = v0[2] #[0] #GW This fixes the dimension problem, but I don't really understand why
     pump_axis = v0[3][opa_range]
     frequency_domain_data_v0 = v0[0]
 
@@ -325,7 +325,7 @@ def variant0(data, counts, window_function=""):
     ir_2d = avg_frequency_domain_data_v0[:, :, opa_range]
     ir_2d_txt = generate_legacy_data_format(ir_2d, ir_delays[:,0], probe_axis, pump_axis)
 
-    np.savetxt(os.path.join(path, "ir_2d_v0" + window_function + "_.txt"), ir_2d_txt)
+    np.savetxt(os.path.join(path, "ir_2d_v0_" + window_function + ".txt"), ir_2d_txt)
 
 def variant1(data, counts, window_function=""):
     # ----- Variant 1 
@@ -342,14 +342,14 @@ def variant1(data, counts, window_function=""):
 
     v1 = generate_frequency_domain_data(time_domain_absorption_v1, interferograms, counts_v1)
 
-    opa_range = v1[2][0]
+    opa_range = v1[2] #[0] #GW This fixes the dimension problem, but I don't really understand why
     pump_axis = v1[3][opa_range]
     frequency_domain_data_v1 = v1[0]
 
     ir_2d = frequency_domain_data_v1[:, :, opa_range]
     ir_2d_txt = generate_legacy_data_format(ir_2d, ir_delays[:,0], probe_axis, pump_axis)
     
-    np.savetxt(os.path.join(path, "ir_2d_v1" + window_function + "_.txt"), ir_2d_txt)
+    np.savetxt(os.path.join(path, "ir_2d_v1_" + window_function + ".txt"), ir_2d_txt)
 
 # %%
 if __name__ == "__main__":
