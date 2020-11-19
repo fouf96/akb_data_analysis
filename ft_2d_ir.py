@@ -357,6 +357,12 @@ if __name__ == "__main__":
     # Load data set
     d, w, c, ir_delays, probe_axis = load_data_set(path)
     print(d.shape)
+    # plot interferogram 
+    from matplotlib import pyplot as plt
+    scan = 0
+    delay = 0
+    plt.plot(d[scan, delay , -1,:]) # -1 is the interferogram!!!
+    plt.show()
 # %%
     apodization_functions = [
                             "",
@@ -375,7 +381,7 @@ if __name__ == "__main__":
                             "barthann"]
 
     # cheating to curb the output
-    apodization_functions = ["cos_square"]
+    # apodization_functions = ["cos_square"]
 
     for apo_func in apodization_functions:
         variant0(d, c, apo_func)
