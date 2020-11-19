@@ -4,7 +4,7 @@ import os
 import numpy as np
 from numpy import ndarray
 
-import data_processing as dp
+import data_processing_offline as dp
 
 from matplotlib import pyplot as plt
 
@@ -597,7 +597,7 @@ def variant3_possibility1(data, counts, window_function=""):
 
 # %%
 if __name__ == "__main__":
-    path = r"C:\Users\H-Lab\Documents\data_analysis\20201016_ITx_FTVIPER_186_000"
+    path = r"C:\data\Dropbox (Wille Biophysik)\Wille Biophysik Team Folder\hendrik_sample_2dir_data\20201016_ITx_FTVIPER_186_000"
     # Load data set
     d, w, c, ir_delays, vis_delays, probe_axis = load_data_set(path)
     print(d.shape)
@@ -617,6 +617,8 @@ if __name__ == "__main__":
                             "blackmanharris",
                             "nuttall",
                             "barthann"]
+
+    apodization_functions = ["cos_square"]
 
     for apo_func in apodization_functions:
         variant0_possibility0(d, c, apo_func)
