@@ -9,7 +9,7 @@ import data_processing_offline as dp
 
 from matplotlib import pyplot as plt
 
-def load_data_set(path):
+def load_data_set(path): #, filename):
     # Get name of folder and
     # ergo filename in this folder
     filename = os.path.basename(path)
@@ -17,6 +17,7 @@ def load_data_set(path):
     # and probe_wn_axis etc.
     # vis_delays = np.load(os.path.join(path, "vis_delay_file_" + filename +".npy")) 
     ir_delays = np.load(os.path.join(path, "delay_file_" + filename +".npy")) 
+    # ir_delays = ir_delays[:4,:] # for a broken data set
     probe_axis = np.load(os.path.join(path, "probe_wn_axis_" + filename +".npy"))
 
     # Check whether combined data set
@@ -353,9 +354,12 @@ def variant1(data, counts, window_function=""):
 
 # %%
 if __name__ == "__main__":
-    path = r"C:\data\Dropbox (Wille Biophysik)\Wille Biophysik Team Folder\hendrik_sample_2dir_data\20201023_20201023_RDC_Hexan_FT2DIR_test_mA_000"
+    # path = r"C:\data\Dropbox (Wille Biophysik)\Wille Biophysik Team Folder\hendrik_sample_2dir_data\20201023_20201023_RDC_Hexan_FT2DIR_test_mA_000"
+    path = r"C:\data\Local Data\hendrik_data_210126\20210126__ITX_DMSO_FT2DIR_186_000"
+    # path = r"C:\data\Local Data\hendrik_data_210126"
+    # filename = r"20210126_ITX_DMSO_FT2DIR_186_000"
     # Load data set
-    d, w, c, ir_delays, probe_axis = load_data_set(path)
+    d, w, c, ir_delays, probe_axis = load_data_set(path) #, filename)
     print(d.shape)
     # plot interferogram 
     from matplotlib import pyplot as plt
@@ -366,6 +370,7 @@ if __name__ == "__main__":
 # %%
     apodization_functions = [
                             "",
+                            "cos",
                             "cos_square",
                             "boxcar",
                             "triang",

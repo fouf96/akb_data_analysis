@@ -863,7 +863,7 @@ def process_ft2dir_data(
     # interferogram length. Thats why we multiply the size of our time domain with the zero
     # pad factor.
     efficient_length = next_fast_len(data.shape[-1] * zero_pad_factor)
-    envelope = apodization_function(data.shape[-1])
+    envelope = apodization_function(data.shape[-1], window_function)
 
     #! Julian phase corrects the time domain spectra instead of the
     #! frequency domain spectra. We believe that it mathematically makes
@@ -934,16 +934,26 @@ def apodization_function(data_size: int, window: str or tuple = None) -> ndarray
            
                 * shape: (data:size)
     """
-    if window is None:
-        return np.ones(data_size)
+    print("Window function requested:", window)
+    if window is None or window=='':
+        envelope = np.ones(data_size)
     elif window == "cos_square":
         # Generate a window that has the shape of a cosine^2 starting at
         # 1 and stopping at 0. This is achieved by generating an evenly
         # spaced "x-Axis" going from 0 to pi/2 with data_size steps.
-        window = np.cos(np.linspace(0, np.pi / 2, data_size)) ** 2
-        return window
+        envelope = np.cos(np.linspace(0, np.pi / 2, data_size)) ** 2
+    elif window == "cos":
+        # Generate a window that has the shape of a cosine starting at
+        # 1 and stopping at 0. This is achieved by generating an evenly
+        # spaced "x-Axis" going from 0 to pi/2 with data_size steps.
+        envelope = np.cos(np.linspace(0, np.pi / 2, data_size))
     else:
-        window = get_window(window, data_size, fftbins=True)
+        # get_window returns the window for a complete, symmetrical interferogram
+        # we have only the "right half", therefore slight fiddling with
+        # datasize to cut out only the window part that we need
+        envelope = get_window(window, 2*data_size, fftbins=True)[data_size:]
+
+    return envelope
 
 
 def process_interferogram(interferogram: ndarray, zero_pad_factor: int = 2):
